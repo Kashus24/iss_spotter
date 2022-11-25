@@ -21,7 +21,7 @@ const fetchMyIP = (callback) => {
       return;
     }
     const ip = JSON.parse(body).ip;
-    callback(error, ip);
+    callback(null, ip);
   });
 };
   
@@ -33,27 +33,27 @@ const fetchCoordsByIP = function(ip, callback) {
       return;
     }
 
-    const divBody = JSON.parse(body);
+    const parsedBody = JSON.parse(body);
 
-    if (!divBody.success) {
-      const message = `Success was ${divBody.success}. Server says: ${divBody.message} for IP ${divBody.ip}`;
+    if (!parsedBody.success) {
+      const message = `Success was ${parsedBody.success}. Server says: ${parsedBody.message} for IP ${parsedBody.ip}`;
       callback(Error(message), null);
       return;
     }
-    const { latitude, longitude } = divBody;
+    const { latitude, longitude } = parsedBody;
     callback(null, {latitude, longitude });
   });
 };
 
 const fetchISSFlyOverTimes = (coords, callback) => {
-  request(`https://iss-flyover.herokuapp.com/json/?lat=${coords.lat}&lon=${coords.lon}`, (error,response,body) => {
+  request(`https://iss-flyover.herokuapp.com/json/?lat=${coords.latitude}&lon=${coords.longitude}`, (error,response,body) => {
     if (error) {
       callback(error, null);
       return;
     }
     if (response.statusCode !== 200) {
       const msg =  `Status code ${response.statusCode} for ${body}`;
-      callback(Error(msg), null);
+      callback(Error(msg),null);
       return;
 
     }
@@ -76,4 +76,27 @@ const fetchISSFlyOverTimes = (coords, callback) => {
 
 }
 
-module.exports = { fetchMyIP, fetchCoordsByIP, fetchISSFlyOverTimes };
+const nextISSTimesForMyLocation = function(callback) {
+  fetchMyIP((error, ip) => {
+    if (error) {
+      return callback(error, null);
+    }
+
+    fetchCoordsByIP(ip, (error, loc) => {
+      if (error) {
+        return callback(error, null);
+      }
+
+      fetchISSFlyOverTimes(loc, (error, nextPasses) => {
+        if (error) {
+          return callback(error, null);
+        }
+
+        callback(null, nextPasses);
+      });
+    });
+  });
+};
+
+
+module.exports = { nextISSTimesForMyLocation };
